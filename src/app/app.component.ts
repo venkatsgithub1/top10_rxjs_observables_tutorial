@@ -1,8 +1,20 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, VERSION, ViewChild } from '@angular/core';
 import { NgModel } from '@angular/forms';
-import { Observable, of, from } from 'rxjs';
-import { map, tap, share, switchMap, filter } from 'rxjs/operators';
+import { Observable, of, from, fromEvent } from 'rxjs';
+import {
+  map,
+  tap,
+  share,
+  switchMap,
+  filter,
+  debounceTime,
+  distinctUntilChanged,
+  take,
+  first,
+  takeWhile,
+  takeLast
+} from 'rxjs/operators';
 
 @Component({
   selector: 'my-app',
@@ -41,7 +53,7 @@ export class AppComponent implements OnInit {
       // tap is used when we want to just look at the data.
       .pipe(
         tap(name => console.log('name received:' + name)),
-        map(name => name.toUpperCase())
+        map((name: string) => name.toUpperCase())
       )
       .subscribe(data => console.log('data from source: ' + data));
 
@@ -67,15 +79,32 @@ export class AppComponent implements OnInit {
     );
 
     combined.subscribe();
+
+    // 4 - take
+    let counter = 0;
+    const sourceListener = fromEvent(document, 'click');
+    sourceListener.pipe(takeWhile(() => counter < 3)).subscribe(() => {
+      console.log('clicked on document!', counter);
+      counter++;
+    });
+
+    const sourceFromArray = of(1, 2, 3, 4);
+    sourceFromArray.pipe(takeLast(2)).subscribe(value => {
+      console.log('value', value);
+    });
   }
 
   search(text$: Observable<string>): Observable<string[]> {
     return text$.pipe(
+      debounceTime(500),
+      distinctUntilChanged(),
       switchMap(searchTerm => {
         if (!searchTerm) {
           return [];
         }
-        return this.getPostsByTerm(searchTerm);
+        // TODO: needs work
+        // return this.getPostsByTerm(searchTerm);
+        return this.getPosts();
       })
     );
   }
